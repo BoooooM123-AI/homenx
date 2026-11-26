@@ -57,6 +57,7 @@ public:
     void onLockPicture(VoidCb cb) { m_lockPictureCb = std::move(cb); }
     void onFontsChange(VoidCb cb) { m_fontsCb = std::move(cb); }
     void onPointerModeChange(std::function<void(int)> cb) { m_pointerModeCb = std::move(cb); }
+    void onPixelArtChange(std::function<void(int)> cb) { m_pixelArtCb = std::move(cb); }
     void onReturnTimings(VoidCb cb) { m_returnTimingsCb = std::move(cb); }
     // Sidebar order: slot 0-4 left column, 5-9 right; value = button id.
     void setSidebarOrderState(std::vector<int> order, std::vector<std::string> names) {
@@ -170,6 +171,7 @@ private:
     VoidCb m_lockPictureCb;
     VoidCb m_fontsCb;
     std::function<void(int)> m_pointerModeCb;
+    std::function<void(int)> m_pixelArtCb;
     VoidCb m_returnTimingsCb;
     std::vector<int> m_sidebarOrder;
     std::vector<std::string> m_sidebarNames;

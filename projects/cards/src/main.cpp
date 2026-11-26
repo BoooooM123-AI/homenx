@@ -3,6 +3,7 @@
 
 #include <nxui/Application.hpp>
 #include <nxui/core/Renderer.hpp>
+#include <switchu/pixel_art_setting.hpp>
 #include <switch.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -44,6 +45,7 @@ int main(int, char**) {
     nxui::Application application;
     application.setActivity(std::make_unique<cards::CardsActivity>());
     const bool ok = application.initialize();
+    if (ok) application.renderer().setPixelArtLevel(pixelartsetting::read()); // Settings > HomeNX > Pixel art
     if (ok) application.run();
     application.shutdown();
 

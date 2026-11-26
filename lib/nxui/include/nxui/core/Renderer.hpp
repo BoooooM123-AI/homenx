@@ -139,6 +139,12 @@ public:
     void applyBlur(float radius = 1.0f, int passes = 2);
     void applyWave(float time, float amplitude, float frequency);
 
+    // Pixel-art look, applied to every finished frame: 0 off, 1 chunky 2x
+    // pixels (a 640x360 picture), 2 chunkier 4x pixels (320x180). The whole UI
+    // is shrunk and drawn back with hard edges. deko3d backend only.
+    void setPixelArtLevel(int level) { m_pixelArtLevel = level < 0 ? 0 : (level > 2 ? 2 : level); }
+    int pixelArtLevel() const { return m_pixelArtLevel; }
+
     // Switch shader program (flushes current batch)
     void useShader(ShaderProgram prog);
 
@@ -211,7 +217,11 @@ private:
     void updateProjection();
     void bindRenderTarget(int offscreenIdx);
     void restoreRenderTarget();
+    void applyPixelArt();   // the finished frame, shrunk and drawn back with hard edges
+    int m_samplerIdx = 0;   // 0 smooth, 1 hard-edged (only the pixel-art pass uses it)
 #endif
+
+    int m_pixelArtLevel = 0;
 
     GpuDevice& m_gpu;
 

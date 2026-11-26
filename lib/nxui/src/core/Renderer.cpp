@@ -157,13 +157,20 @@ bool Renderer::loadShaders() {
 }
 
 void Renderer::setupSampler() {
-    dk::SamplerDescriptor samDesc;
-    samDesc.initialize(
+    dk::SamplerDescriptor samDesc[2];
+    // 0: smooth, what everything is drawn with.
+    samDesc[0].initialize(
         dk::Sampler{}
             .setFilter(DkFilter_Linear, DkFilter_Linear)
             .setWrapMode(DkWrapMode_ClampToEdge, DkWrapMode_ClampToEdge, DkWrapMode_ClampToEdge)
     );
-    std::memcpy(m_gpu.samDescCpuAddr(), &samDesc, sizeof(samDesc));
+    // 1: hard-edged, for blowing the shrunk frame back up (pixel-art look).
+    samDesc[1].initialize(
+        dk::Sampler{}
+            .setFilter(DkFilter_Nearest, DkFilter_Nearest)
+            .setWrapMode(DkWrapMode_ClampToEdge, DkWrapMode_ClampToEdge, DkWrapMode_ClampToEdge)
+    );
+    std::memcpy(m_gpu.samDescCpuAddr(), samDesc, sizeof(samDesc));
 }
 
 int Renderer::registerTexture(const dk::ImageView& view) {
@@ -367,6 +374,47 @@ void Renderer::beginFrame() {
 
 void Renderer::endFrame() {
     flush();
+    if (m_pixelArtLevel > 0 && m_gpu.offscreenReady())
+        applyPixelArt();
+}
+
+// Pixel-art look: the finished frame is shrunk to 640x360 (or 320x180) with the
+// blit engine's point sampling, then drawn back over the whole screen with the
+// hard-edged sampler. Rounded corners turn into stair-steps, text and pictures
+// into big square pixels. Runs after everything else, so any screen gets it.
+void Renderer::applyPixelArt() {
+    // Frame -> target 0 at half size (flushes and fences like the glass capture).
+    captureToOffscreen(false);
+
+    int target = 0;
+    float frac = 1.f; // how much of the target holds the picture
+    if (m_pixelArtLevel >= 2) {
+        auto cmd = m_gpu.cmdBuf();
+        dk::ImageView src{m_gpu.offscreenImage(0)};
+        dk::ImageView dst{m_gpu.offscreenImage(1)};
+        DkImageRect srcRect{0, 0, 0,
+            (uint32_t)GpuDevice::FB_WIDTH / 2, (uint32_t)GpuDevice::FB_HEIGHT / 2, 1};
+        DkImageRect dstRect{0, 0, 0,
+            (uint32_t)GpuDevice::FB_WIDTH / 4, (uint32_t)GpuDevice::FB_HEIGHT / 4, 1};
+        cmd.blitImage(src, srcRect, dst, dstRect, 0);
+        cmd.barrier(DkBarrier_Full, DkInvalidateFlags_Image);
+        target = 1;
+        frac = 0.5f;
+    }
+
+    auto cmd = m_gpu.cmdBuf();
+    cmd.setScissors(0, DkScissor{0, 0, (uint32_t)m_gpu.width(), (uint32_t)m_gpu.height()});
+    cmd.bindColorState(dk::ColorState{}.setBlendEnable(0, false)); // plain overwrite
+    useShader(ShaderProgram::Backdrop);
+    bindTexture(m_offDescSlot[target]);
+    m_samplerIdx = 1;
+    addQuad(0.f, 0.f, (float)GpuDevice::FB_WIDTH, (float)GpuDevice::FB_HEIGHT,
+            0.f, 0.f, frac, frac, Color::white());
+    flush();
+    m_samplerIdx = 0;
+    cmd.bindColorState(dk::ColorState{}.setBlendEnable(0, true));
+    useShader(ShaderProgram::Basic);
+    m_reusableOffscreenCaptureValid = false;
 }
 
 void Renderer::updateProjection() {
@@ -405,7 +453,7 @@ void Renderer::flush() {
     }
 
     int texSlot = (m_texturing && m_curTexSlot >= 0) ? m_curTexSlot : WHITE_TEX_SLOT;
-    cmd.bindTextures(DkStage_Fragment, 0, dkMakeTextureHandle(texSlot, 0));
+    cmd.bindTextures(DkStage_Fragment, 0, dkMakeTextureHandle(texSlot, m_samplerIdx));
 
     DkGpuAddr vtxAddr = m_gpu.vtxGpuAddr(slot) + m_vtxBatchStart * sizeof(Vertex2D);
     cmd.bindVtxBuffer(0, vtxAddr, batchVerts * sizeof(Vertex2D));

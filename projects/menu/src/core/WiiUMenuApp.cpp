@@ -2,6 +2,7 @@
 #include "FontChoice.hpp"
 #include "social/NotificationLog.hpp"
 #include "PointerSetting.hpp"
+#include <switchu/pixel_art_setting.hpp>
 #include <switchu/sd_commit.hpp>
 #include "widgets/GlossyIcon.hpp"
 #include "widgets/FolderPalette.hpp"
@@ -997,6 +998,7 @@ bool WiiUMenuApp::onCreate() {
     loadCustomNames();
     nxui::GlassPanel::setPerformanceMode(!m_config.glassEffects);
     app().input().setPointerMode(static_cast<nxui::Input::PointerMode>(pointersetting::read()));
+    app().renderer().setPixelArtLevel(pixelartsetting::read());
     m_appLoader.setPendingTransform([this](std::vector<PendingApp>& apps) {
         for (auto& app : apps) {
             auto it = m_customNames.find(app.titleId);

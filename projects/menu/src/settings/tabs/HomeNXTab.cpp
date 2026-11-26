@@ -1,6 +1,7 @@
 #include "TabBuilders.hpp"
 #include "core/FontChoice.hpp"
 #include "core/PointerSetting.hpp"
+#include <switchu/pixel_art_setting.hpp>
 #include <nxui/core/I18n.hpp>
 #include <algorithm>
 #include <filesystem>
@@ -39,6 +40,23 @@ SettingsScreen::Tab settings::tabs::HomeNXTab::build(SettingsScreen& screen) {
         it.onChange = [&screen](SettingItem& self) {
             screen.m_glassEffects = self.boolVal;
             if (screen.m_glassEffectsCb) screen.m_glassEffectsCb(self.boolVal);
+        };
+        t.items.push_back(std::move(it));
+    }
+    {
+        SettingItem it;
+        it.label = i18n.tr("settings.homenx.pixel_art", "Pixel art");
+        it.description = i18n.tr("settings.homenx.pixel_art_desc",
+            "Draws all of HOME as big square pixels, like an old game. Chunky is 2x, Extra chunky 4x. "
+            "It looks best with the VT323 (pixel) font below, and it's cheap to draw.");
+        it.type = ItemType::Selector;
+        it.options = {i18n.tr("settings.homenx.pixel_art_off", "Off"),
+                      i18n.tr("settings.homenx.pixel_art_chunky", "Chunky (2x)"),
+                      i18n.tr("settings.homenx.pixel_art_extra", "Extra chunky (4x)")};
+        it.intVal = pixelartsetting::read();
+        it.onChange = [&screen](SettingItem& self) {
+            pixelartsetting::write(self.intVal);
+            if (screen.m_pixelArtCb) screen.m_pixelArtCb(self.intVal);
         };
         t.items.push_back(std::move(it));
     }

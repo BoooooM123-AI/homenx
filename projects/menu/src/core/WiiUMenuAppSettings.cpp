@@ -491,6 +491,9 @@ void WiiUMenuApp::createSettings() {
     m_settings->onPointerModeChange([this](int mode) {
         app().input().setPointerMode(static_cast<nxui::Input::PointerMode>(mode));
     });
+    m_settings->onPixelArtChange([this](int level) {
+        app().renderer().setPixelArtLevel(level);
+    });
     m_settings->onLockPicture([this]() { openLockPicturePicker(); });
     m_settings->onLockPassword([this]() {
         if (!lockScreenOn()) std::ofstream("sdmc:/config/SwitchU/lock_screen") << "1"; // a password needs the lock screen
